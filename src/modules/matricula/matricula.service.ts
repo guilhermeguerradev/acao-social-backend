@@ -27,7 +27,7 @@ export class MatriculaService {
     aulaId: string
   }) {
     try {
-      return await prisma.$transaction(async tx => {
+      return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const [aula, beneficiario] = await Promise.all([
           tx.aula.findUnique({
             where: { id: data.aulaId },
@@ -92,7 +92,7 @@ export class MatriculaService {
     aulaId?: string
   }) {
     try {
-      return await prisma.$transaction(async tx => {
+      return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const current = await tx.matricula.findUnique({
           where: { id },
           select: { id: true, aulaId: true, beneficiarioId: true },
