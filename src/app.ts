@@ -7,10 +7,6 @@ import { errorMiddleware } from './middlewares/error.middleware'
 import { getOptionalNumberEnv, getRequiredEnv } from './config/env'
 
 const app = express()
-const allowedOrigins = getRequiredEnv('CORS_ORIGINS')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean)
 
 // Security headers
 app.use(helmet())
@@ -26,9 +22,13 @@ const limiter = rateLimit({
 app.use(limiter)
 
 app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: 'https://acao-social-frontend-production.up.railway.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
   credentials: true
+  ,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }))
 
 app.use(express.json({ limit: getRequiredEnv('JSON_BODY_LIMIT') }))
