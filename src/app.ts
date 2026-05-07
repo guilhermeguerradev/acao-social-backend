@@ -31,6 +31,14 @@ app.use(cors({
   optionsSuccessStatus: 204
 }))
 
+app.get('/', (_req, res) => {
+  res.status(200).json({ status: 'ok' })
+})
+
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'healthy' })
+})
+
 app.use(express.json({ limit: getRequiredEnv('JSON_BODY_LIMIT') }))
 app.use(routes)
 app.use(errorMiddleware)

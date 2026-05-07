@@ -30,6 +30,12 @@ app.use((0, cors_1.default)({
     preflightContinue: false,
     optionsSuccessStatus: 204
 }));
+app.get('/', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'healthy' });
+});
 app.use(express_1.default.json({ limit: (0, env_1.getRequiredEnv)('JSON_BODY_LIMIT') }));
 app.use(routes_1.default);
 app.use(error_middleware_1.errorMiddleware);
