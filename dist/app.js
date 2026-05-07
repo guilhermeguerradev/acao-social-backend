@@ -11,6 +11,10 @@ const routes_1 = __importDefault(require("./routes"));
 const error_middleware_1 = require("./middlewares/error.middleware");
 const env_1 = require("./config/env");
 const app = (0, express_1.default)();
+const allowedOrigins = (0, env_1.getRequiredEnv)('CORS_ORIGINS')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
 // Security headers
 app.use((0, helmet_1.default)());
 // Rate limiter (basic)
@@ -23,7 +27,7 @@ const limiter = (0, express_rate_limit_1.default)({
 });
 app.use(limiter);
 app.use((0, cors_1.default)({
-    origin: 'https://acao-social-frontend-production.up.railway.app',
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
     credentials: true,

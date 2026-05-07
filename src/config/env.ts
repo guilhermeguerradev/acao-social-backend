@@ -1,5 +1,25 @@
+function normalizeEnvValue(value: string | undefined): string | undefined {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue) {
+    return undefined
+  }
+
+  const firstChar = trimmedValue[0]
+  const lastChar = trimmedValue[trimmedValue.length - 1]
+
+  if (
+    trimmedValue.length >= 2 &&
+    ((firstChar === '"' && lastChar === '"') || (firstChar === "'" && lastChar === "'"))
+  ) {
+    return trimmedValue.slice(1, -1).trim()
+  }
+
+  return trimmedValue
+}
+
 export function getRequiredEnv(name: string): string {
-  const value = process.env[name]?.trim()
+  const value = normalizeEnvValue(process.env[name])
 
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`)
@@ -20,7 +40,7 @@ export function getRequiredNumberEnv(name: string): number {
 }
 
 export function getOptionalNumberEnv(name: string, defaultValue: number): number {
-  const rawValue = process.env[name]?.trim()
+  const rawValue = normalizeEnvValue(process.env[name])
 
   if (!rawValue) {
     return defaultValue
