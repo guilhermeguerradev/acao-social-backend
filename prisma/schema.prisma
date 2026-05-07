@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  medico     Medico?
+  instrutor  Instrutor?
+}
+
+model Medico {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  user   User @relation(fields: [userId], references: [id])
+
+  consultas Consulta[]
+}
+
+model Instrutor {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  user   User @relation(fields: [userId], references: [id])
+
+  aulas Aula[]
+}
+
+model Beneficiario {
+  id        String   @id @default(uuid())
+  name      String
+  telefone  String?
+
+  createdAt DateTime @default(now())
+
+  consultas  Consulta[]
+  matriculas Matricula[]
+}
+
+model Consulta {
+  id              String   @id @default(uuid())
+  dataHora        DateTime
+
+  medicoId        String
+  beneficiarioId  String
+
+  medico         Medico       @relation(fields: [medicoId], references: [id])
+  beneficiario   Beneficiario @relation(fields: [beneficiarioId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([medicoId, dataHora])
+  @@index([beneficiarioId])
+}
+
+model Aula {
+  id           String   @id @default(uuid())
+  titulo       String
+  modalidade   String
+  vagas        Int
+
+  instrutorId  String
+  instrutor    Instrutor @relation(fields: [instrutorId], references: [id])
+
+  matriculas   Matricula[]
+
+  createdAt DateTime @default(now())
+
+  @@index([instrutorId])
+}
+
+model Matricula {
+  id              String @id @default(uuid())
+
+  beneficiarioId  String
+  aulaId          String
+
+  beneficiario Beneficiario @relation(fields: [beneficiarioId], references: [id])
+  aula         Aula         @relation(fields: [aulaId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([beneficiarioId, aulaId])
+  @@index([aulaId])
+}
