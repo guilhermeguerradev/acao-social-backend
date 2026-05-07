@@ -1,0 +1,24 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_routes_1 = __importDefault(require("../modules/auth/auth.routes"));
+const consulta_routes_1 = __importDefault(require("../modules/consulta/consulta.routes"));
+const aula_routes_1 = __importDefault(require("../modules/aula/aula.routes"));
+const matricula_routes_1 = __importDefault(require("../modules/matricula/matricula.routes"));
+const beneficiario_routes_1 = __importDefault(require("../modules/beneficiario/beneficiario.routes"));
+const user_routes_1 = __importDefault(require("../modules/user/user.routes"));
+const medico_routes_1 = __importDefault(require("../modules/medico/medico.routes"));
+const instrutor_routes_1 = __importDefault(require("../modules/instrutor/instrutor.routes"));
+const router = (0, express_1.Router)();
+router.use('/auth', auth_routes_1.default);
+router.use('/consultas', consulta_routes_1.default);
+router.use('/aulas', aula_routes_1.default);
+router.use('/matriculas', matricula_routes_1.default);
+router.use('/beneficiarios', beneficiario_routes_1.default);
+router.use('/users', user_routes_1.default);
+router.use('/medicos', medico_routes_1.default);
+router.use('/instrutores', instrutor_routes_1.default);
+exports.default = router;

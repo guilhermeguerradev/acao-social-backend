@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const aula_controller_1 = require("./aula.controller");
+const auth_middleware_1 = require("../../middlewares/auth.middleware");
+const role_middleware_1 = require("../../middlewares/role.middleware");
+const validate_middleware_1 = require("../../middlewares/validate.middleware");
+const aula_schema_1 = require("./aula.schema");
+const router = (0, express_1.Router)();
+const controller = new aula_controller_1.AulaController();
+router.post('/', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['INSTRUTOR']), (0, validate_middleware_1.validate)(aula_schema_1.createAulaSchema), (req, res, next) => controller.create(req, res, next));
+router.get('/', auth_middleware_1.authMiddleware, (req, res, next) => controller.findAll(req, res, next));
+router.get('/:id', auth_middleware_1.authMiddleware, (req, res, next) => controller.findById(req, res, next));
+router.put('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['INSTRUTOR']), (0, validate_middleware_1.validate)(aula_schema_1.updateAulaSchema), (req, res, next) => controller.update(req, res, next));
+router.delete('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['INSTRUTOR']), (req, res, next) => controller.delete(req, res, next));
+exports.default = router;

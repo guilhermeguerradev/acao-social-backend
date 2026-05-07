@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const matricula_controller_1 = require("./matricula.controller");
+const auth_middleware_1 = require("../../middlewares/auth.middleware");
+const validate_middleware_1 = require("../../middlewares/validate.middleware");
+const matricula_schema_1 = require("./matricula.schema");
+const router = (0, express_1.Router)();
+const controller = new matricula_controller_1.MatriculaController();
+router.post('/', auth_middleware_1.authMiddleware, (0, validate_middleware_1.validate)(matricula_schema_1.createMatriculaSchema), (req, res, next) => controller.create(req, res, next));
+router.get('/', auth_middleware_1.authMiddleware, (req, res, next) => controller.findAll(req, res, next));
+router.get('/:id', auth_middleware_1.authMiddleware, (req, res, next) => controller.findById(req, res, next));
+router.put('/:id', auth_middleware_1.authMiddleware, (0, validate_middleware_1.validate)(matricula_schema_1.updateMatriculaSchema), (req, res, next) => controller.update(req, res, next));
+router.delete('/:id', auth_middleware_1.authMiddleware, (req, res, next) => controller.delete(req, res, next));
+exports.default = router;

@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const consulta_controller_1 = require("./consulta.controller");
+const auth_middleware_1 = require("../../middlewares/auth.middleware");
+const role_middleware_1 = require("../../middlewares/role.middleware");
+const validate_middleware_1 = require("../../middlewares/validate.middleware");
+const consulta_schema_1 = require("./consulta.schema");
+const router = (0, express_1.Router)();
+const controller = new consulta_controller_1.ConsultaController();
+router.post('/', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO']), (0, validate_middleware_1.validate)(consulta_schema_1.createConsultaSchema), controller.create);
+router.get('/', auth_middleware_1.authMiddleware, controller.findAll);
+router.get('/:id', auth_middleware_1.authMiddleware, controller.findById);
+router.put('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO']), (0, validate_middleware_1.validate)(consulta_schema_1.updateConsultaSchema), controller.update);
+router.delete('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO']), controller.delete);
+exports.default = router;

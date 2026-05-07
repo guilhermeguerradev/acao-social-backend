@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const instrutor_controller_1 = require("./instrutor.controller");
+const auth_middleware_1 = require("../../middlewares/auth.middleware");
+const validate_middleware_1 = require("../../middlewares/validate.middleware");
+const instrutor_schema_1 = require("./instrutor.schema");
+const role_middleware_1 = require("../../middlewares/role.middleware");
+const router = (0, express_1.Router)();
+const controller = new instrutor_controller_1.InstrutorController();
+router.post('/', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO', 'INSTRUTOR']), (0, validate_middleware_1.validate)(instrutor_schema_1.createInstrutorSchema), (req, res, next) => controller.create(req, res, next));
+router.get('/', auth_middleware_1.authMiddleware, (req, res, next) => controller.findAll(req, res, next));
+router.get('/:id', auth_middleware_1.authMiddleware, (req, res, next) => controller.findById(req, res, next));
+router.put('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO', 'INSTRUTOR']), (0, validate_middleware_1.validate)(instrutor_schema_1.updateInstrutorSchema), (req, res, next) => controller.update(req, res, next));
+router.delete('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO', 'INSTRUTOR']), (req, res, next) => controller.delete(req, res, next));
+exports.default = router;

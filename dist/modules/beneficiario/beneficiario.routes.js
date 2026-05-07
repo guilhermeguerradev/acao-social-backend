@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const beneficiario_controller_1 = require("./beneficiario.controller");
+const auth_middleware_1 = require("../../middlewares/auth.middleware");
+const validate_middleware_1 = require("../../middlewares/validate.middleware");
+const beneficiario_schema_1 = require("./beneficiario.schema");
+const router = (0, express_1.Router)();
+const controller = new beneficiario_controller_1.BeneficiarioController();
+router.use(auth_middleware_1.authMiddleware);
+router.post("/", (0, validate_middleware_1.validate)(beneficiario_schema_1.createBeneficiarioSchema), controller.create);
+router.get("/", controller.findAll);
+router.get("/:id", controller.findById);
+router.delete("/:id", controller.delete);
+exports.default = router;

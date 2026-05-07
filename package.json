@@ -2,11 +2,12 @@
   "name": "acao-social-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --files src/server.ts",
     "prebuild": "prisma generate",
-    "build": "tsc --noEmit",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "seed": "npx ts-node prisma/seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
