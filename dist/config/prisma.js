@@ -7,8 +7,10 @@ const client_1 = require("@prisma/client");
 const pg_1 = require("pg");
 const env_1 = require("./env");
 const connectionString = (0, env_1.getRequiredEnv)("DATABASE_URL");
+const isProduction = process.env.NODE_ENV === "production";
 const pool = new pg_1.Pool({
     connectionString,
+    ...(isProduction ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 const adapter = new adapter_pg_1.PrismaPg(pool);
 exports.prisma = new client_1.PrismaClient({ adapter });

@@ -7,9 +7,7 @@ export function errorMiddleware(
   res: Response,
   next: NextFunction
 ) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.error(err)
-  }
+  console.error(err)
 
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({

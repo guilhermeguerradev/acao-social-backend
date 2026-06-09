@@ -12,6 +12,15 @@ const allowedOrigins = getRequiredEnv('CORS_ORIGINS')
   .map(origin => origin.trim())
   .filter(Boolean)
 
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}))
+
 // Security headers
 app.use(helmet())
 
@@ -21,18 +30,10 @@ const limiter = rateLimit({
   max: getOptionalNumberEnv('RATE_LIMIT_MAX', 100),
   standardHeaders: true,
   legacyHeaders: false,
+  skip: req => req.method === 'OPTIONS',
   message: { error: 'Muitas requisicoes. Tente novamente mais tarde.' },
 })
 app.use(limiter)
-
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
-  credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}))
 
 app.get('/', (_req, res) => {
   res.status(200).json({ status: 'ok' })
