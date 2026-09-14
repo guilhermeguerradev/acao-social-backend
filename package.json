@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --files src/server.ts",
-    "build": "prisma generate && prisma migrate deploy && tsc",
+    "build": "prisma generate && tsc",
     "postinstall": "prisma generate",
     "start": "node index.js",
     "seed": "npx ts-node prisma/seed.ts",
