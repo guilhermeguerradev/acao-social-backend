@@ -27,7 +27,7 @@ const demandSelect = {
 function accessScope(actor) {
     if (!actor.userId)
         throw new AppError_1.AppError('Nao autorizado', 401);
-    return actor.role === 'MEDICO' || actor.role === 'INSTRUTOR'
+    return actor.role === 'ADMIN' || actor.role === 'MEDICO' || actor.role === 'INSTRUTOR'
         ? {}
         : { requesterId: actor.userId };
 }

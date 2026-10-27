@@ -8,7 +8,7 @@ class AulaController {
         try {
             const result = await service.create({
                 ...req.body,
-                instrutorId: req.user?.instrutorId ?? req.body.instrutorId,
+                instrutorId: req.user?.role === 'ADMIN' ? req.body.instrutorId : req.user?.instrutorId,
             });
             res.status(201).json(result);
         }
@@ -36,7 +36,7 @@ class AulaController {
     }
     async update(req, res, next) {
         try {
-            const result = await service.update(req.params.id, req.body, req.user?.instrutorId);
+            const result = await service.update(req.params.id, req.body, req.user?.instrutorId, req.user?.role === 'ADMIN');
             res.json(result);
         }
         catch (err) {
@@ -45,7 +45,7 @@ class AulaController {
     }
     async delete(req, res, next) {
         try {
-            await service.delete(req.params.id, req.user?.instrutorId);
+            await service.delete(req.params.id, req.user?.instrutorId, req.user?.role === 'ADMIN');
             res.status(204).send();
         }
         catch (err) {

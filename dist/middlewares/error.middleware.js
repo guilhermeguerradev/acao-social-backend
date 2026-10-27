@@ -11,6 +11,15 @@ function errorMiddleware(err, req, res, next) {
         });
     }
     if (err instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+        const demandSchema = err.meta?.modelName === 'Demand'
+            || String(err.meta?.table ?? '').replace(/"/g, '') === 'public.Demand'
+            || String(err.meta?.column ?? '').replace(/"/g, '').startsWith('Demand.');
+        if ((err.code === 'P2021' || err.code === 'P2022') && demandSchema && /^\/demandas(?:[/?]|$)/.test(req.originalUrl ?? req.path ?? '')) {
+            return res.status(503).json({
+                error: 'O modulo de demandas esta temporariamente indisponivel. Tente novamente mais tarde.',
+                code: 'DEMANDS_UNAVAILABLE',
+            });
+        }
         if (err.code === 'P2025')
             return res.status(404).json({ error: 'Registro nao encontrado' });
         if (err.code === 'P2002')

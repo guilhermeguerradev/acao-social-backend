@@ -7,6 +7,8 @@ import { errorMiddleware } from './middlewares/error.middleware'
 import { getOptionalNumberEnv, getRequiredEnv } from './config/env'
 
 const app = express()
+// Render routes public traffic through its reverse proxy; do not trust all hops.
+app.set('trust proxy', process.env.RENDER === 'true' ? 1 : false)
 const allowedOrigins = getRequiredEnv('CORS_ORIGINS')
   .split(',')
   .map(origin => origin.trim())

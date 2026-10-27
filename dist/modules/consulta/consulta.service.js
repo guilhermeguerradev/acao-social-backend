@@ -24,6 +24,8 @@ function parseDate(date) {
 class ConsultaService {
     async create(data) {
         const dataHora = parseDate(data.dataHora);
+        if (!data.medicoId)
+            throw new AppError_1.AppError('Selecione o medico responsavel', 400);
         const [medico, beneficiario] = await Promise.all([
             prisma_1.prisma.medico.findUnique({ where: { id: data.medicoId } }),
             prisma_1.prisma.beneficiario.findUnique({ where: { id: data.beneficiarioId } })
@@ -74,7 +76,7 @@ class ConsultaService {
         }
         return consulta;
     }
-    async update(id, dataHora, requesterMedicoId) {
+    async update(id, dataHora, requesterMedicoId, isAdmin = false) {
         const consulta = await prisma_1.prisma.consulta.findUnique({
             where: { id },
             select: { id: true, medicoId: true },
@@ -82,7 +84,7 @@ class ConsultaService {
         if (!consulta) {
             throw new AppError_1.AppError('Consulta nao encontrada', 404);
         }
-        if (!requesterMedicoId || consulta.medicoId !== requesterMedicoId) {
+        if (!isAdmin && (!requesterMedicoId || consulta.medicoId !== requesterMedicoId)) {
             throw new AppError_1.AppError('Acesso negado', 403);
         }
         const parsedDate = parseDate(dataHora);
@@ -113,7 +115,7 @@ class ConsultaService {
             throw error;
         }
     }
-    async delete(id, requesterMedicoId) {
+    async delete(id, requesterMedicoId, isAdmin = false) {
         const consulta = await prisma_1.prisma.consulta.findUnique({
             where: { id },
             select: { medicoId: true },
@@ -121,7 +123,7 @@ class ConsultaService {
         if (!consulta) {
             throw new AppError_1.AppError('Consulta nao encontrada', 404);
         }
-        if (!requesterMedicoId || consulta.medicoId !== requesterMedicoId) {
+        if (!isAdmin && (!requesterMedicoId || consulta.medicoId !== requesterMedicoId)) {
             throw new AppError_1.AppError('Acesso negado', 403);
         }
         await prisma_1.prisma.consulta.delete({

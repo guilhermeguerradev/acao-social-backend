@@ -118,9 +118,9 @@ test('ordinary users can list only their demands and cannot inject an owner filt
 });
 test('only the approved professional roles may query all demands', async () => {
   prisma.demand.findMany = async ({ where }) => { assert.deepEqual(where, {}); return [row]; };
-  for (const role of ['MEDICO', 'INSTRUTOR']) await service.findAll({}, { userId: 'professional', role });
+  for (const role of ['ADMIN', 'MEDICO', 'INSTRUTOR']) await service.findAll({}, { userId: 'professional', role });
   prisma.demand.findMany = async ({ where }) => { assert.equal(where.requesterId, 'other'); return []; };
-  await service.findAll({}, { userId: 'other', role: 'ADMIN' });
+  await service.findAll({}, { userId: 'other', role: 'UNKNOWN' });
 });
 
 test('demand search combines text matches with the requester access scope', async () => {
@@ -146,7 +146,7 @@ test('demand details are scoped on the server and conceal other users records', 
 });
 test('professional demand details do not require ownership', async () => {
   prisma.demand.findFirst = async ({ where }) => { assert.deepEqual(where, { id: key }); return row; };
-  for (const role of ['MEDICO', 'INSTRUTOR']) assert.equal(await service.findById(key, { userId: 'professional', role }), row);
+  for (const role of ['ADMIN', 'MEDICO', 'INSTRUTOR']) assert.equal(await service.findById(key, { userId: 'professional', role }), row);
 });
 test('all demand service operations reject a missing authenticated identity', async () => {
   const missing = { userId: '', role: 'MEDICO' };
@@ -198,11 +198,11 @@ test('database failures during authentication are server errors, not invalid ses
   assert.deepEqual(await response.json(), { error: 'Erro interno do servidor' });
 });
 
-test('demand database failures return a generic 500 without leaking query or schema details', async () => {
+test('demand schema failures return a recoverable 503 without leaking query or schema details', async () => {
   prisma.demand.findMany = async () => { throw new Prisma.PrismaClientKnownRequestError('Missing column', { code: 'P2022', clientVersion: 'test', meta: { column: 'Demand.phone' } }); };
   const response = await request('?page=1');
-  assert.equal(response.status, 500);
-  assert.deepEqual(await response.json(), { error: 'Erro interno do servidor' });
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: 'O modulo de demandas esta temporariamente indisponivel. Tente novamente mais tarde.', code: 'DEMANDS_UNAVAILABLE' });
 });
 test('HTTP demand details validate identifiers, protect ownership and provide no status-update route', async () => {
   assert.equal((await request('/invalid')).status, 400);

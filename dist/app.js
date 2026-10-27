@@ -11,6 +11,8 @@ const routes_1 = __importDefault(require("./routes"));
 const error_middleware_1 = require("./middlewares/error.middleware");
 const env_1 = require("./config/env");
 const app = (0, express_1.default)();
+// Render routes public traffic through its reverse proxy; do not trust all hops.
+app.set('trust proxy', process.env.RENDER === 'true' ? 1 : false);
 const allowedOrigins = (0, env_1.getRequiredEnv)('CORS_ORIGINS')
     .split(',')
     .map(origin => origin.trim())

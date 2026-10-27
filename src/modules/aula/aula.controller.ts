@@ -8,7 +8,7 @@ export class AulaController {
     try {
       const result = await service.create({
         ...req.body,
-        instrutorId: req.user?.instrutorId ?? req.body.instrutorId,
+        instrutorId: req.user?.role === 'ADMIN' ? req.body.instrutorId : req.user?.instrutorId,
       })
       res.status(201).json(result)
     } catch (err) {
@@ -36,7 +36,7 @@ export class AulaController {
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await service.update(req.params.id as string, req.body, req.user?.instrutorId)
+      const result = await service.update(req.params.id as string, req.body, req.user?.instrutorId, req.user?.role === 'ADMIN')
       res.json(result)
     } catch (err) {
       next(err)
@@ -45,7 +45,7 @@ export class AulaController {
 
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
-      await service.delete(req.params.id as string, req.user?.instrutorId)
+      await service.delete(req.params.id as string, req.user?.instrutorId, req.user?.role === 'ADMIN')
       res.status(204).send()
     } catch (err) {
       next(err)

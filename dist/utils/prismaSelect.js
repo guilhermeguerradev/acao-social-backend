@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.beneficiarioSelect = exports.instrutorWithUserSelect = exports.medicoWithUserSelect = exports.roleUserSelect = exports.publicUserSelect = void 0;
 exports.publicUserSelect = {
+    isAdmin: true,
     id: true,
     name: true,
     email: true,

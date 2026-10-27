@@ -33,7 +33,7 @@ class UserController {
     }
     async update(req, res, next) {
         try {
-            const result = await service.update(req.params.id, req.body);
+            const result = await service.update(req.params.id, req.body, req.user);
             res.json(result);
         }
         catch (err) {
@@ -42,7 +42,7 @@ class UserController {
     }
     async delete(req, res, next) {
         try {
-            await service.delete(req.params.id);
+            await service.delete(req.params.id, req.user);
             res.status(204).send();
         }
         catch (err) {

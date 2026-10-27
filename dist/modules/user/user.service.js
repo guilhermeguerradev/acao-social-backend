@@ -56,7 +56,10 @@ class UserService {
         }
         return user;
     }
-    async update(id, data) {
+    async update(id, data, actor) {
+        const target = await this.findById(id);
+        if (target.isAdmin && actor?.role !== 'ADMIN')
+            throw new AppError_1.AppError('Apenas administradores podem alterar esta conta', 403);
         if (data.email) {
             const exists = await prisma_1.prisma.user.findUnique({
                 where: { email: data.email }
@@ -93,11 +96,19 @@ class UserService {
             throw error;
         }
     }
-    async delete(id) {
-        await this.findById(id);
+    async delete(id, actor) {
+        const target = await this.findById(id);
+        if (actor?.userId === id)
+            throw new AppError_1.AppError('Nao e permitido excluir sua propria conta', 409);
+        if (target.isAdmin && actor?.role !== 'ADMIN')
+            throw new AppError_1.AppError('Apenas administradores podem remover esta conta', 403);
         try {
-            await prisma_1.prisma.user.delete({
-                where: { id }
+            await prisma_1.prisma.$transaction(async (tx) => {
+                // Remove only empty professional profiles; FK restrictions preserve clinical,
+                // course and demand history and roll back the entire deletion on conflict.
+                await tx.medico.deleteMany({ where: { userId: id } });
+                await tx.instrutor.deleteMany({ where: { userId: id } });
+                await tx.user.delete({ where: { id } });
             });
         }
         catch (error) {

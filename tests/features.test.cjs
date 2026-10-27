@@ -8,7 +8,7 @@ const prismaPath = require.resolve('../dist/config/prisma');
 require.cache[prismaPath] = { id: prismaPath, filename: prismaPath, loaded: true, exports: { prisma } };
 const jwtPath = require.resolve('../dist/utils/jwt');
 require.cache[jwtPath] = { id: jwtPath, filename: jwtPath, loaded: true, exports: {
-  verifyToken: token => { if (token !== 'valid') throw new Error('Invalid token'); return { userId: 'user' }; },
+  verifyToken: token => { if (!['valid', 'stale-admin'].includes(token)) throw new Error('Invalid token'); return { userId: 'user', ...(token === 'stale-admin' ? { role: 'ADMIN' } : {}) }; },
 } };
 
 const { BeneficiarioService } = require('../dist/modules/beneficiario/beneficiario.service');
@@ -30,7 +30,7 @@ const enrollment = new MatriculaService();
 const users = new UserService();
 
 beforeEach(() => {
-  for (const model of ['beneficiario', 'consulta', 'aula', 'matricula', 'user']) {
+  for (const model of ['beneficiario', 'consulta', 'aula', 'matricula', 'user', 'medico', 'instrutor']) {
     prisma[model] = {
       findUnique: async () => ({ id: uuid }),
       findFirst: async () => null,
@@ -38,6 +38,7 @@ beforeEach(() => {
       count: async () => 0,
       update: async ({ data }) => ({ id: uuid, ...data }),
       create: async ({ data }) => ({ id: uuid, ...data }),
+      deleteMany: async () => ({ count: 0 }),
       delete: async () => ({ id: uuid }),
     };
   }
@@ -204,4 +205,71 @@ test('HTTP protected updates deny users without the required role', async () => 
 test('HTTP doctor cannot reschedule another doctor consultation', async () => {
   prisma.user.findUnique = async () => ({ id: 'user', medico: { id: 'other' }, instrutor: null });
   assert.equal((await request('/consulta/' + uuid, { dataHora: future.toISOString() }, 'valid')).status, 403);
+});
+
+test('HTTP administrator may edit consultations and lessons owned by other professionals', async () => {
+  prisma.user.findUnique = async () => ({ id: 'admin', isAdmin: true, medico: null, instrutor: null });
+  assert.equal((await request('/consulta/' + uuid, { dataHora: future.toISOString() }, 'valid')).status, 200);
+  assert.equal((await request('/aula/' + uuid, { titulo: 'Titulo atualizado' }, 'valid')).status, 200);
+});
+
+test('an old administrator JWT cannot override the current database permissions', async () => {
+  prisma.user.findUnique = async () => ({ id: 'user', isAdmin: false, medico: null, instrutor: null });
+  assert.equal((await request('/consulta/' + uuid, { dataHora: future.toISOString() }, 'stale-admin')).status, 403);
+});
+
+test('public professional registration cannot request administrator privileges', () => {
+  const { registerMedicoSchema, registerInstrutorSchema } = require('../dist/modules/auth/auth.schema');
+  for (const schema of [registerMedicoSchema, registerInstrutorSchema]) {
+    assert.equal(schema.safeParse({ name: 'Pessoa', email: 'pessoa@example.com', password: 'test-password', isAdmin: true }).success, false);
+  }
+});
+
+test('professional users cannot edit or delete an administrator account', async () => {
+  prisma.user.findUnique = async () => ({ id: uuid, isAdmin: true });
+  const actor = { userId: 'professional', role: 'MEDICO' };
+  await assert.rejects(users.update(uuid, { name: 'Changed' }, actor), status(403));
+  await assert.rejects(users.delete(uuid, actor), status(403));
+});
+
+test('administrators cannot delete their own account and public forms reject administrator flags', async () => {
+  prisma.user.findUnique = async () => ({ id: uuid, isAdmin: true });
+  await assert.rejects(users.delete(uuid, { userId: uuid, role: 'ADMIN' }), status(409));
+  const { createUserSchema, updateUserSchema } = require('../dist/modules/user/user.schema');
+  assert.equal(createUserSchema.safeParse({ name: 'Pessoa', email: 'pessoa@example.com', password: 'test-password', isAdmin: true }).success, false);
+  assert.equal(updateUserSchema.safeParse({ isAdmin: true }).success, false);
+});
+
+test('user deletion removes empty profiles in a transaction and preserves dependency conflicts', async () => {
+  const removed = [];
+  prisma.medico.deleteMany = async ({ where }) => { assert.equal(where.userId, uuid); removed.push('medico'); };
+  prisma.instrutor.deleteMany = async () => removed.push('instrutor');
+  prisma.user.delete = async () => removed.push('user');
+  await users.delete(uuid, { userId: 'admin', role: 'ADMIN' });
+  assert.deepEqual(removed, ['medico', 'instrutor', 'user']);
+  prisma.medico.deleteMany = async () => { throw knownError('P2003'); };
+  await assert.rejects(users.delete(uuid, { userId: 'admin', role: 'ADMIN' }), status(409));
+});
+
+test('administrator bypasses ownership but still obeys capacity and scheduling rules', async () => {
+  await assert.rejects(lesson.update(uuid, { vagas: 1 }, undefined, true), status(400));
+  await assert.rejects(consultation.update(uuid, new Date(0), undefined, true), status(400));
+  await lesson.delete(uuid, undefined, true);
+  await consultation.delete(uuid, undefined, true);
+});
+
+test('Render proxy trusts only the final hop and local mode trusts none', () => {
+  process.env.CORS_ORIGINS = 'http://localhost:5173';
+  process.env.JSON_BODY_LIMIT = '100kb';
+  const path = require.resolve('../dist/app');
+  const previous = process.env.RENDER;
+  try {
+    process.env.RENDER = 'true'; delete require.cache[path];
+    assert.equal(require(path).default.get('trust proxy'), 1);
+    delete process.env.RENDER; delete require.cache[path];
+    assert.equal(require(path).default.get('trust proxy'), false);
+  } finally {
+    if (previous === undefined) delete process.env.RENDER; else process.env.RENDER = previous;
+    delete require.cache[path];
+  }
 });

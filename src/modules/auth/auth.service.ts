@@ -15,6 +15,7 @@ export class AuthService {
     const user = await prisma.user.findUnique({
       where: { email },
       select: {
+        isAdmin: true,
         id: true,
         name: true,
         email: true,
@@ -34,7 +35,7 @@ export class AuthService {
       throw new AppError('Credenciais invalidas', 401)
     }
 
-    const role = user.medico ? 'MEDICO' : user.instrutor ? 'INSTRUTOR' : null
+    const role = user.isAdmin ? 'ADMIN' : user.medico ? 'MEDICO' : user.instrutor ? 'INSTRUTOR' : null
 
     const token = generateToken({
       userId: user.id,

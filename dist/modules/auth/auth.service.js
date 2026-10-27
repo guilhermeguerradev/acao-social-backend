@@ -14,6 +14,7 @@ class AuthService {
         const user = await prisma_1.prisma.user.findUnique({
             where: { email },
             select: {
+                isAdmin: true,
                 id: true,
                 name: true,
                 email: true,
@@ -29,7 +30,7 @@ class AuthService {
         if (!validPassword) {
             throw new AppError_1.AppError('Credenciais invalidas', 401);
         }
-        const role = user.medico ? 'MEDICO' : user.instrutor ? 'INSTRUTOR' : null;
+        const role = user.isAdmin ? 'ADMIN' : user.medico ? 'MEDICO' : user.instrutor ? 'INSTRUTOR' : null;
         const token = (0, jwt_1.generateToken)({
             userId: user.id,
             role,

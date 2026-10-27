@@ -1,4 +1,5 @@
 export const publicUserSelect = {
+  isAdmin: true,
   id: true,
   name: true,
   email: true,

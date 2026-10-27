@@ -35,6 +35,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
+        isAdmin: true,
         id: true,
         medico: { select: { id: true } },
         instrutor: { select: { id: true } },
@@ -45,7 +46,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       return res.status(401).json({ error: "Nao autorizado" });
     }
 
-    const role = user.medico ? "MEDICO" : user.instrutor ? "INSTRUTOR" : null;
+    const role = user.isAdmin ? "ADMIN" : user.medico ? "MEDICO" : user.instrutor ? "INSTRUTOR" : null;
 
     (req as Request & { user?: JwtPayload }).user = {
       ...decoded,

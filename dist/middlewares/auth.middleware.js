@@ -29,6 +29,7 @@ async function authMiddleware(req, res, next) {
         const user = await prisma_1.prisma.user.findUnique({
             where: { id: decoded.userId },
             select: {
+                isAdmin: true,
                 id: true,
                 medico: { select: { id: true } },
                 instrutor: { select: { id: true } },
@@ -37,7 +38,7 @@ async function authMiddleware(req, res, next) {
         if (!user) {
             return res.status(401).json({ error: "Nao autorizado" });
         }
-        const role = user.medico ? "MEDICO" : user.instrutor ? "INSTRUTOR" : null;
+        const role = user.isAdmin ? "ADMIN" : user.medico ? "MEDICO" : user.instrutor ? "INSTRUTOR" : null;
         req.user = {
             ...decoded,
             userId: user.id,

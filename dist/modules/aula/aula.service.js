@@ -18,6 +18,8 @@ const aulaSelect = {
 };
 class AulaService {
     async create(data) {
+        if (!data.instrutorId)
+            throw new AppError_1.AppError('Selecione o instrutor responsavel', 400);
         const instrutor = await prisma_1.prisma.instrutor.findUnique({
             where: { id: data.instrutorId }
         });
@@ -56,7 +58,7 @@ class AulaService {
         }
         return aula;
     }
-    async update(id, data, requesterInstrutorId) {
+    async update(id, data, requesterInstrutorId, isAdmin = false) {
         return prisma_1.prisma.$transaction(async (tx) => {
             const aula = await tx.aula.findUnique({
                 where: { id },
@@ -69,7 +71,7 @@ class AulaService {
             if (!aula) {
                 throw new AppError_1.AppError('Aula nao encontrada', 404);
             }
-            if (!requesterInstrutorId || aula.instrutorId !== requesterInstrutorId) {
+            if (!isAdmin && (!requesterInstrutorId || aula.instrutorId !== requesterInstrutorId)) {
                 throw new AppError_1.AppError('Acesso negado', 403);
             }
             if (data.instrutorId && data.instrutorId !== aula.instrutorId) {
@@ -89,7 +91,7 @@ class AulaService {
             });
         }, { isolationLevel: client_1.Prisma.TransactionIsolationLevel.Serializable });
     }
-    async delete(id, requesterInstrutorId) {
+    async delete(id, requesterInstrutorId, isAdmin = false) {
         const aula = await prisma_1.prisma.aula.findUnique({
             where: { id },
             select: { instrutorId: true },
@@ -97,7 +99,7 @@ class AulaService {
         if (!aula) {
             throw new AppError_1.AppError('Aula nao encontrada', 404);
         }
-        if (!requesterInstrutorId || aula.instrutorId !== requesterInstrutorId) {
+        if (!isAdmin && (!requesterInstrutorId || aula.instrutorId !== requesterInstrutorId)) {
             throw new AppError_1.AppError('Acesso negado', 403);
         }
         try {

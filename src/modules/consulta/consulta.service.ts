@@ -30,6 +30,7 @@ export class ConsultaService {
     dataHora: Date
   }) {
     const dataHora = parseDate(data.dataHora)
+    if (!data.medicoId) throw new AppError('Selecione o medico responsavel', 400)
 
     const [medico, beneficiario] = await Promise.all([
       prisma.medico.findUnique({ where: { id: data.medicoId } }),
@@ -91,7 +92,7 @@ export class ConsultaService {
     return consulta
   }
 
-  async update(id: string, dataHora: Date, requesterMedicoId?: string) {
+  async update(id: string, dataHora: Date, requesterMedicoId?: string, isAdmin = false) {
     const consulta = await prisma.consulta.findUnique({
       where: { id },
       select: { id: true, medicoId: true },
@@ -101,7 +102,7 @@ export class ConsultaService {
       throw new AppError('Consulta nao encontrada', 404)
     }
 
-    if (!requesterMedicoId || consulta.medicoId !== requesterMedicoId) {
+    if (!isAdmin && (!requesterMedicoId || consulta.medicoId !== requesterMedicoId)) {
       throw new AppError('Acesso negado', 403)
     }
 
@@ -136,7 +137,7 @@ export class ConsultaService {
     }
   }
 
-  async delete(id: string, requesterMedicoId?: string) {
+  async delete(id: string, requesterMedicoId?: string, isAdmin = false) {
     const consulta = await prisma.consulta.findUnique({
       where: { id },
       select: { medicoId: true },
@@ -146,7 +147,7 @@ export class ConsultaService {
       throw new AppError('Consulta nao encontrada', 404)
     }
 
-    if (!requesterMedicoId || consulta.medicoId !== requesterMedicoId) {
+    if (!isAdmin && (!requesterMedicoId || consulta.medicoId !== requesterMedicoId)) {
       throw new AppError('Acesso negado', 403)
     }
 

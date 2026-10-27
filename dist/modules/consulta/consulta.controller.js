@@ -8,7 +8,7 @@ class ConsultaController {
         try {
             const result = await service.create({
                 ...req.body,
-                medicoId: req.user?.medicoId ?? req.body.medicoId,
+                medicoId: req.user?.role === 'ADMIN' ? req.body.medicoId : req.user?.medicoId,
                 dataHora: new Date(req.body.dataHora)
             });
             res.status(201).json(result);
@@ -37,7 +37,7 @@ class ConsultaController {
     }
     async update(req, res, next) {
         try {
-            const result = await service.update(req.params.id, new Date(req.body.dataHora), req.user?.medicoId);
+            const result = await service.update(req.params.id, new Date(req.body.dataHora), req.user?.medicoId, req.user?.role === 'ADMIN');
             res.json(result);
         }
         catch (err) {
@@ -46,7 +46,7 @@ class ConsultaController {
     }
     async delete(req, res, next) {
         try {
-            await service.delete(req.params.id, req.user?.medicoId);
+            await service.delete(req.params.id, req.user?.medicoId, req.user?.role === 'ADMIN');
             res.status(204).send();
         }
         catch (err) {
