@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../../middlewares/auth.middleware");
+const validate_middleware_1 = require("../../middlewares/validate.middleware");
+const demanda_controller_1 = require("./demanda.controller");
+const demanda_schema_1 = require("./demanda.schema");
+const demanda_options_1 = require("./demanda.options");
+const router = (0, express_1.Router)();
+const controller = new demanda_controller_1.DemandController();
+router.use(auth_middleware_1.authMiddleware);
+router.post('/', (0, validate_middleware_1.validate)(demanda_schema_1.createDemandSchema), controller.create);
+router.get('/', controller.findAll);
+router.get('/options', (_req, res) => res.json(demanda_options_1.demandOptions));
+router.get('/:id', controller.findById);
+exports.default = router;

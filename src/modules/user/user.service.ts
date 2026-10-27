@@ -1,4 +1,5 @@
 import { prisma } from '../../config/prisma'
+import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { AppError } from '../../utils/AppError'
 import { publicUserSelect } from '../../utils/prismaSelect'
@@ -88,7 +89,7 @@ export class UserService {
     if (data.password) updateData.password = await bcrypt.hash(data.password, 12)
 
     try {
-      return prisma.user.update({
+      return await prisma.user.update({
         where: { id },
         data: updateData,
         select: {
@@ -97,18 +98,27 @@ export class UserService {
           instrutor: { select: { id: true } }
         }
       })
-    } catch {
-      throw new AppError('Usuario nao encontrado', 404)
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') throw new AppError('Usuario nao encontrado', 404)
+        if (error.code === 'P2002') throw new AppError('Email ja cadastrado', 409)
+      }
+      throw error
     }
   }
 
   async delete(id: string) {
+    await this.findById(id)
     try {
       await prisma.user.delete({
         where: { id }
       })
-    } catch {
-      throw new AppError('Usuario nao encontrado', 404)
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') throw new AppError('Usuario possui dependencias e nao pode ser removido', 409)
+        if (error.code === 'P2025') throw new AppError('Usuario nao encontrado', 404)
+      }
+      throw error
     }
   }
 }

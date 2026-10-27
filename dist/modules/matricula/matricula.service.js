@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MatriculaService = void 0;
+const listQuery_1 = require("../../utils/listQuery");
 const client_1 = require("@prisma/client");
 const prisma_1 = require("../../config/prisma");
 const AppError_1 = require("../../utils/AppError");
@@ -61,12 +62,15 @@ class MatriculaService {
             throw new AppError_1.AppError('Beneficiario ja matriculado ou limite de vagas atingido', 409);
         }
     }
-    async findAll() {
-        return prisma_1.prisma.matricula.findMany({
-            select: matriculaSelect,
-            orderBy: { createdAt: 'desc' },
-            take: 100,
-        });
+    async findAll(input = {}) {
+        const query = (0, listQuery_1.parseListQuery)('matricula', input);
+        const { page, limit } = query;
+        const where = { aulaId: query.aulaId };
+        const [data, total] = await prisma_1.prisma.$transaction([
+            prisma_1.prisma.matricula.findMany({ where, select: matriculaSelect, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], skip: (page - 1) * limit, take: limit }),
+            prisma_1.prisma.matricula.count({ where }),
+        ]);
+        return (0, listQuery_1.paginated)(data, total, page, limit);
     }
     async findById(id) {
         const matricula = await prisma_1.prisma.matricula.findUnique({

@@ -19,7 +19,7 @@ class ConsultaController {
     }
     async findAll(req, res, next) {
         try {
-            const result = await service.findAll();
+            const result = await service.findAll(req.query);
             res.json(result);
         }
         catch (err) {

@@ -6,6 +6,14 @@ import bcrypt from 'bcryptjs'
 import { getRequiredEnv } from '../src/config/env'
 
 const connectionString = getRequiredEnv('DATABASE_URL')
+const seedTarget = new URL(connectionString)
+if (!['localhost', '127.0.0.1'].includes(seedTarget.hostname) || seedTarget.pathname !== '/acao_social' || process.env.NODE_ENV === 'production') {
+  throw new Error('Seed permitido somente no banco local acao_social fora de producao. Nenhum dado foi alterado.')
+}
+const seedPassword = getRequiredEnv('SEED_USER_PASSWORD')
+if (seedPassword.length < 12 || Buffer.byteLength(seedPassword, 'utf8') > 72) {
+  throw new Error('SEED_USER_PASSWORD deve ter pelo menos 12 caracteres e no maximo 72 bytes. Nenhum dado foi alterado.')
+}
 
 const pool = new Pool({
   connectionString,
@@ -34,7 +42,7 @@ async function main() {
   console.log('✓ Dados antigos removidos')
 
   // ===== CRIAR USUÁRIOS =====
-  const password = bcrypt.hashSync(getRequiredEnv('SEED_USER_PASSWORD'), 12)
+  const password = bcrypt.hashSync(seedPassword, 12)
 
   const usersData = [
     // Médicos

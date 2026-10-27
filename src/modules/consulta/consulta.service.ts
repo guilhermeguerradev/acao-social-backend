@@ -1,3 +1,5 @@
+import { parseListQuery, paginated } from '../../utils/listQuery'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/prisma'
 import { AppError } from '../../utils/AppError'
 import { beneficiarioSelect, medicoWithUserSelect } from '../../utils/prismaSelect'
@@ -64,12 +66,16 @@ export class ConsultaService {
     })
   }
 
-  async findAll() {
-    return prisma.consulta.findMany({
-      select: consultaSelect,
-      orderBy: { dataHora: 'asc' },
-      take: 100,
-    })
+  async findAll(input: unknown = {}) {
+    const query = parseListQuery('consulta', input)
+    const { page, limit } = query
+    const where = { medicoId: query.medicoId, beneficiarioId: query.beneficiarioId, dataHora: { gte: query.startDate ? new Date(query.startDate) : undefined, lte: query.endDate ? new Date(query.endDate) : undefined } }
+
+    const [data, total] = await prisma.$transaction([
+      prisma.consulta.findMany({ where, select: consultaSelect, orderBy: [{ dataHora: 'asc' as const }, { id: 'asc' }], skip: (page - 1) * limit, take: limit }),
+      prisma.consulta.count({ where }),
+    ])
+    return paginated(data, total, page, limit)
   }
 
   async findById(id: string) {
@@ -95,7 +101,7 @@ export class ConsultaService {
       throw new AppError('Consulta nao encontrada', 404)
     }
 
-    if (requesterMedicoId && consulta.medicoId !== requesterMedicoId) {
+    if (!requesterMedicoId || consulta.medicoId !== requesterMedicoId) {
       throw new AppError('Acesso negado', 403)
     }
 
@@ -118,11 +124,16 @@ export class ConsultaService {
       throw new AppError('Horario indisponivel', 409)
     }
 
-    return prisma.consulta.update({
+    try {
+      return await prisma.consulta.update({
       where: { id },
       data: { dataHora: parsedDate },
       select: consultaSelect,
-    })
+      })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new AppError('Horario indisponivel', 409)
+      throw error
+    }
   }
 
   async delete(id: string, requesterMedicoId?: string) {
@@ -135,7 +146,7 @@ export class ConsultaService {
       throw new AppError('Consulta nao encontrada', 404)
     }
 
-    if (requesterMedicoId && consulta.medicoId !== requesterMedicoId) {
+    if (!requesterMedicoId || consulta.medicoId !== requesterMedicoId) {
       throw new AppError('Acesso negado', 403)
     }
 

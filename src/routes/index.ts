@@ -8,6 +8,7 @@ import beneficiarioRoutes from '../modules/beneficiario/beneficiario.routes'
 import userRoutes from '../modules/user/user.routes'
 import medicoRoutes from '../modules/medico/medico.routes'
 import instrutorRoutes from '../modules/instrutor/instrutor.routes'
+import demandRoutes from '../modules/demanda/demanda.routes'
 
 const router = Router()
 
@@ -19,5 +20,6 @@ router.use('/beneficiarios', beneficiarioRoutes)
 router.use('/users', userRoutes)
 router.use('/medicos', medicoRoutes)
 router.use('/instrutores', instrutorRoutes)
+router.use('/demandas', demandRoutes)
 
 export default router

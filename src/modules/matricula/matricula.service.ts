@@ -1,3 +1,4 @@
+import { parseListQuery, paginated } from '../../utils/listQuery'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/prisma'
 import { AppError } from '../../utils/AppError'
@@ -66,12 +67,16 @@ export class MatriculaService {
     }
   }
 
-  async findAll() {
-    return prisma.matricula.findMany({
-      select: matriculaSelect,
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    })
+  async findAll(input: unknown = {}) {
+    const query = parseListQuery('matricula', input)
+    const { page, limit } = query
+    const where = { aulaId: query.aulaId }
+
+    const [data, total] = await prisma.$transaction([
+      prisma.matricula.findMany({ where, select: matriculaSelect, orderBy: [{ createdAt: 'desc' as const }, { id: 'asc' }], skip: (page - 1) * limit, take: limit }),
+      prisma.matricula.count({ where }),
+    ])
+    return paginated(data, total, page, limit)
   }
 
   async findById(id: string) {

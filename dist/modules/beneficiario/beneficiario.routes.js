@@ -11,5 +11,6 @@ router.use(auth_middleware_1.authMiddleware);
 router.post("/", (0, validate_middleware_1.validate)(beneficiario_schema_1.createBeneficiarioSchema), controller.create);
 router.get("/", controller.findAll);
 router.get("/:id", controller.findById);
+router.put("/:id", (0, validate_middleware_1.validate)(beneficiario_schema_1.updateBeneficiarioSchema), controller.update);
 router.delete("/:id", controller.delete);
 exports.default = router;

@@ -17,6 +17,50 @@ model User {
 
   medico     Medico?
   instrutor  Instrutor?
+  demands    Demand[]
+}
+
+enum DemandStatus {
+  RECEIVED
+}
+
+enum DemandCategory {
+  FOOD
+  CLOTHING
+  HYGIENE
+  HEALTH
+  EDUCATION
+  SOCIAL_ASSISTANCE
+  OTHER
+}
+
+enum DemandReturnPreference {
+  WHATSAPP
+  PHONE_CALL
+}
+
+model Demand {
+  id          String       @id @default(uuid())
+  description String       @db.VarChar(2000)
+  status      DemandStatus @default(RECEIVED)
+  requesterId String
+  requester   User         @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  requestKey  String
+  createdAt   DateTime     @default(now())
+
+  phone                 String?                 @db.VarChar(11)
+  neighborhood          String?                 @db.VarChar(120)
+  returnPreference      DemandReturnPreference?
+  category              DemandCategory?
+  otherDescription      String?                 @db.VarChar(200)
+  urgent                Boolean?
+  contactConsentAt      DateTime?
+  contactConsentVersion String?
+  contactConsentText    String?
+
+  @@unique([requesterId, requestKey])
+  @@index([requesterId, createdAt, id])
+  @@index([createdAt, id])
 }
 
 model Medico {

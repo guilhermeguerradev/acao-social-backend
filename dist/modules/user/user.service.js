@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserService = void 0;
 const prisma_1 = require("../../config/prisma");
+const client_1 = require("@prisma/client");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const AppError_1 = require("../../utils/AppError");
 const prismaSelect_1 = require("../../utils/prismaSelect");
@@ -72,7 +73,7 @@ class UserService {
         if (data.password)
             updateData.password = await bcryptjs_1.default.hash(data.password, 12);
         try {
-            return prisma_1.prisma.user.update({
+            return await prisma_1.prisma.user.update({
                 where: { id },
                 data: updateData,
                 select: {
@@ -82,18 +83,31 @@ class UserService {
                 }
             });
         }
-        catch {
-            throw new AppError_1.AppError('Usuario nao encontrado', 404);
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2025')
+                    throw new AppError_1.AppError('Usuario nao encontrado', 404);
+                if (error.code === 'P2002')
+                    throw new AppError_1.AppError('Email ja cadastrado', 409);
+            }
+            throw error;
         }
     }
     async delete(id) {
+        await this.findById(id);
         try {
             await prisma_1.prisma.user.delete({
                 where: { id }
             });
         }
-        catch {
-            throw new AppError_1.AppError('Usuario nao encontrado', 404);
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2003')
+                    throw new AppError_1.AppError('Usuario possui dependencias e nao pode ser removido', 409);
+                if (error.code === 'P2025')
+                    throw new AppError_1.AppError('Usuario nao encontrado', 404);
+            }
+            throw error;
         }
     }
 }

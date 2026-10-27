@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AulaService = void 0;
+const client_1 = require("@prisma/client");
+const listQuery_1 = require("../../utils/listQuery");
 const prisma_1 = require("../../config/prisma");
 const AppError_1 = require("../../utils/AppError");
 const prismaSelect_1 = require("../../utils/prismaSelect");
@@ -27,12 +29,22 @@ class AulaService {
             select: aulaSelect,
         });
     }
-    async findAll() {
-        return prisma_1.prisma.aula.findMany({
-            select: aulaSelect,
-            orderBy: { createdAt: 'desc' },
-            take: 100,
-        });
+    async findAll(input = {}) {
+        const query = (0, listQuery_1.parseListQuery)('aula', input);
+        const { page, limit } = query;
+        const where = { instrutorId: query.instrutorId, modalidade: query.modalidade ? { contains: query.modalidade, mode: 'insensitive' } : undefined };
+        if (query.available !== undefined) {
+            const rows = await prisma_1.prisma.$queryRaw `
+        SELECT a."id" FROM "Aula" a
+        WHERE (a."vagas" > (SELECT COUNT(*) FROM "Matricula" m WHERE m."aulaId" = a."id")) = ${query.available === 'true'}
+      `;
+            where.id = { in: rows.map(row => row.id) };
+        }
+        const [data, total] = await prisma_1.prisma.$transaction([
+            prisma_1.prisma.aula.findMany({ where, select: aulaSelect, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], skip: (page - 1) * limit, take: limit }),
+            prisma_1.prisma.aula.count({ where }),
+        ]);
+        return (0, listQuery_1.paginated)(data, total, page, limit);
     }
     async findById(id) {
         const aula = await prisma_1.prisma.aula.findUnique({
@@ -45,35 +57,37 @@ class AulaService {
         return aula;
     }
     async update(id, data, requesterInstrutorId) {
-        const aula = await prisma_1.prisma.aula.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                instrutorId: true,
-                _count: { select: { matriculas: true } },
+        return prisma_1.prisma.$transaction(async (tx) => {
+            const aula = await tx.aula.findUnique({
+                where: { id },
+                select: {
+                    id: true,
+                    instrutorId: true,
+                    _count: { select: { matriculas: true } },
+                }
+            });
+            if (!aula) {
+                throw new AppError_1.AppError('Aula nao encontrada', 404);
             }
-        });
-        if (!aula) {
-            throw new AppError_1.AppError('Aula nao encontrada', 404);
-        }
-        if (requesterInstrutorId && aula.instrutorId !== requesterInstrutorId) {
-            throw new AppError_1.AppError('Acesso negado', 403);
-        }
-        if (data.instrutorId && data.instrutorId !== aula.instrutorId) {
-            throw new AppError_1.AppError('Nao e permitido transferir aula entre instrutores', 403);
-        }
-        if (data.vagas !== undefined && data.vagas < aula._count.matriculas) {
-            throw new AppError_1.AppError('Vagas nao podem ser menores que numero de matriculados', 400);
-        }
-        return prisma_1.prisma.aula.update({
-            where: { id },
-            data: {
-                titulo: data.titulo,
-                modalidade: data.modalidade,
-                vagas: data.vagas,
-            },
-            select: aulaSelect,
-        });
+            if (!requesterInstrutorId || aula.instrutorId !== requesterInstrutorId) {
+                throw new AppError_1.AppError('Acesso negado', 403);
+            }
+            if (data.instrutorId && data.instrutorId !== aula.instrutorId) {
+                throw new AppError_1.AppError('Nao e permitido transferir aula entre instrutores', 403);
+            }
+            if (data.vagas !== undefined && data.vagas < aula._count.matriculas) {
+                throw new AppError_1.AppError('Vagas nao podem ser menores que numero de matriculados', 400);
+            }
+            return tx.aula.update({
+                where: { id },
+                data: {
+                    titulo: data.titulo,
+                    modalidade: data.modalidade,
+                    vagas: data.vagas,
+                },
+                select: aulaSelect,
+            });
+        }, { isolationLevel: client_1.Prisma.TransactionIsolationLevel.Serializable });
     }
     async delete(id, requesterInstrutorId) {
         const aula = await prisma_1.prisma.aula.findUnique({
@@ -83,7 +97,7 @@ class AulaService {
         if (!aula) {
             throw new AppError_1.AppError('Aula nao encontrada', 404);
         }
-        if (requesterInstrutorId && aula.instrutorId !== requesterInstrutorId) {
+        if (!requesterInstrutorId || aula.instrutorId !== requesterInstrutorId) {
             throw new AppError_1.AppError('Acesso negado', 403);
         }
         try {

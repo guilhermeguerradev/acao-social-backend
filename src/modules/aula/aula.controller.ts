@@ -18,7 +18,7 @@ export class AulaController {
 
   async findAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await service.findAll()
+      const result = await service.findAll(req.query)
       res.json(result)
     } catch (err) {
       next(err)

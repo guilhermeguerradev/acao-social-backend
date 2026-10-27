@@ -12,6 +12,7 @@ const beneficiario_routes_1 = __importDefault(require("../modules/beneficiario/b
 const user_routes_1 = __importDefault(require("../modules/user/user.routes"));
 const medico_routes_1 = __importDefault(require("../modules/medico/medico.routes"));
 const instrutor_routes_1 = __importDefault(require("../modules/instrutor/instrutor.routes"));
+const demanda_routes_1 = __importDefault(require("../modules/demanda/demanda.routes"));
 const router = (0, express_1.Router)();
 router.use('/auth', auth_routes_1.default);
 router.use('/consultas', consulta_routes_1.default);
@@ -21,4 +22,5 @@ router.use('/beneficiarios', beneficiario_routes_1.default);
 router.use('/users', user_routes_1.default);
 router.use('/medicos', medico_routes_1.default);
 router.use('/instrutores', instrutor_routes_1.default);
+router.use('/demandas', demanda_routes_1.default);
 exports.default = router;

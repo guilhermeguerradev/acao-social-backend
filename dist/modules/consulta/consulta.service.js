@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConsultaService = void 0;
+const listQuery_1 = require("../../utils/listQuery");
+const client_1 = require("@prisma/client");
 const prisma_1 = require("../../config/prisma");
 const AppError_1 = require("../../utils/AppError");
 const prismaSelect_1 = require("../../utils/prismaSelect");
@@ -52,12 +54,15 @@ class ConsultaService {
             select: consultaSelect,
         });
     }
-    async findAll() {
-        return prisma_1.prisma.consulta.findMany({
-            select: consultaSelect,
-            orderBy: { dataHora: 'asc' },
-            take: 100,
-        });
+    async findAll(input = {}) {
+        const query = (0, listQuery_1.parseListQuery)('consulta', input);
+        const { page, limit } = query;
+        const where = { medicoId: query.medicoId, beneficiarioId: query.beneficiarioId, dataHora: { gte: query.startDate ? new Date(query.startDate) : undefined, lte: query.endDate ? new Date(query.endDate) : undefined } };
+        const [data, total] = await prisma_1.prisma.$transaction([
+            prisma_1.prisma.consulta.findMany({ where, select: consultaSelect, orderBy: [{ dataHora: 'asc' }, { id: 'asc' }], skip: (page - 1) * limit, take: limit }),
+            prisma_1.prisma.consulta.count({ where }),
+        ]);
+        return (0, listQuery_1.paginated)(data, total, page, limit);
     }
     async findById(id) {
         const consulta = await prisma_1.prisma.consulta.findUnique({
@@ -77,7 +82,7 @@ class ConsultaService {
         if (!consulta) {
             throw new AppError_1.AppError('Consulta nao encontrada', 404);
         }
-        if (requesterMedicoId && consulta.medicoId !== requesterMedicoId) {
+        if (!requesterMedicoId || consulta.medicoId !== requesterMedicoId) {
             throw new AppError_1.AppError('Acesso negado', 403);
         }
         const parsedDate = parseDate(dataHora);
@@ -95,11 +100,18 @@ class ConsultaService {
         if (conflito) {
             throw new AppError_1.AppError('Horario indisponivel', 409);
         }
-        return prisma_1.prisma.consulta.update({
-            where: { id },
-            data: { dataHora: parsedDate },
-            select: consultaSelect,
-        });
+        try {
+            return await prisma_1.prisma.consulta.update({
+                where: { id },
+                data: { dataHora: parsedDate },
+                select: consultaSelect,
+            });
+        }
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+                throw new AppError_1.AppError('Horario indisponivel', 409);
+            throw error;
+        }
     }
     async delete(id, requesterMedicoId) {
         const consulta = await prisma_1.prisma.consulta.findUnique({
@@ -109,7 +121,7 @@ class ConsultaService {
         if (!consulta) {
             throw new AppError_1.AppError('Consulta nao encontrada', 404);
         }
-        if (requesterMedicoId && consulta.medicoId !== requesterMedicoId) {
+        if (!requesterMedicoId || consulta.medicoId !== requesterMedicoId) {
             throw new AppError_1.AppError('Acesso negado', 403);
         }
         await prisma_1.prisma.consulta.delete({

@@ -8,13 +8,17 @@ class BeneficiarioController {
         const result = await service.create(req.body);
         return res.status(201).json(result);
     }
-    async findAll(_req, res) {
-        const result = await service.findAll();
+    async findAll(req, res) {
+        const result = await service.findAll(req.query);
         return res.json(result);
     }
     async findById(req, res) {
         const id = String(req.params.id);
         const result = await service.findById(id);
+        return res.json(result);
+    }
+    async update(req, res) {
+        const result = await service.update(String(req.params.id), req.body);
         return res.json(result);
     }
     async delete(req, res) {
