@@ -77,6 +77,21 @@ test('real PostgreSQL demand persistence, authentication, isolation and retries'
       assert.equal((await post({ ...payload, phone: '123' })).status, 400);
       assert.equal(await prisma.demand.count(), 1);
     });
+    await t.test('options accept valid JWTs and reject expired, differently signed and unknown-account sessions', async () => {
+      const valid = await request('/options', tokens[0]);
+      assert.equal(valid.status, 200);
+      assert.ok(Array.isArray((await valid.json()).categories));
+      const invalidTokens = [
+        jwt.sign({ userId: users[0].id, exp: Math.floor(Date.now() / 1000) - 60 }, process.env.JWT_SECRET),
+        jwt.sign({ userId: users[0].id }, 'different-isolated-test-secret'),
+        jwt.sign({ userId: randomUUID() }, process.env.JWT_SECRET),
+      ];
+      for (const token of invalidTokens) {
+        const response = await request('/options', token);
+        assert.equal(response.status, 401);
+        assert.equal((await response.json()).error, 'Nao autorizado');
+      }
+    });
     await t.test('confirmed submission is persisted with the real authenticated user and received status', async () => {
       const response = await post(payload);
       assert.equal(response.status, 201); received = await response.json();

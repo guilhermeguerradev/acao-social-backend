@@ -17,7 +17,12 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       return res.status(401).json({ error: "Token invalido" });
     }
 
-    const decoded = verifyToken(token);
+    let decoded: JwtPayload | string;
+    try {
+      decoded = verifyToken(token);
+    } catch {
+      return res.status(401).json({ error: "Nao autorizado" });
+    }
 
     if (typeof decoded === "string") {
       return res.status(401).json({ error: "Nao autorizado" });
@@ -50,7 +55,8 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       instrutorId: user.instrutor?.id,
     };
     return next();
-  } catch {
-    return res.status(401).json({ error: "Nao autorizado" });
+  } catch (error) {
+    // A database failure is not evidence that the authenticated session is invalid.
+    return next(error);
   }
 }

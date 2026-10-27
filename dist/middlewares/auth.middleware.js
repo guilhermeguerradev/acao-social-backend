@@ -13,7 +13,13 @@ async function authMiddleware(req, res, next) {
         if (!token) {
             return res.status(401).json({ error: "Token invalido" });
         }
-        const decoded = (0, jwt_1.verifyToken)(token);
+        let decoded;
+        try {
+            decoded = (0, jwt_1.verifyToken)(token);
+        }
+        catch {
+            return res.status(401).json({ error: "Nao autorizado" });
+        }
         if (typeof decoded === "string") {
             return res.status(401).json({ error: "Nao autorizado" });
         }
@@ -41,7 +47,8 @@ async function authMiddleware(req, res, next) {
         };
         return next();
     }
-    catch {
-        return res.status(401).json({ error: "Nao autorizado" });
+    catch (error) {
+        // A database failure is not evidence that the authenticated session is invalid.
+        return next(error);
     }
 }

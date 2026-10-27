@@ -190,6 +190,20 @@ test('HTTP options are authenticated and match the server schema and approved co
   assert.equal(options.consent.text, row.contactConsentText); assert.equal(options.consent.version, 'contact-v1');
   for (const option of options.categories) assert.equal(createDemandSchema.safeParse({ ...payload, category: option.value, otherDescription: option.value === 'OTHER' ? 'Outro apoio' : undefined }).success, true);
 });
+
+test('database failures during authentication are server errors, not invalid sessions', async () => {
+  prisma.user.findUnique = async () => { throw new Prisma.PrismaClientKnownRequestError('Missing relation', { code: 'P2021', clientVersion: 'test', meta: { table: 'public.User' } }); };
+  const response = await request('/options');
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: 'Erro interno do servidor' });
+});
+
+test('demand database failures return a generic 500 without leaking query or schema details', async () => {
+  prisma.demand.findMany = async () => { throw new Prisma.PrismaClientKnownRequestError('Missing column', { code: 'P2022', clientVersion: 'test', meta: { column: 'Demand.phone' } }); };
+  const response = await request('?page=1');
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: 'Erro interno do servidor' });
+});
 test('HTTP demand details validate identifiers, protect ownership and provide no status-update route', async () => {
   assert.equal((await request('/invalid')).status, 400);
   prisma.demand.findFirst = async () => null;
