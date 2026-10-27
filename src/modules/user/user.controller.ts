@@ -1,9 +1,26 @@
 import { Request, Response, NextFunction } from 'express'
 import { UserService } from './user.service'
+import { userIdSchema } from './user.schema'
+import { AppError } from '../../utils/AppError'
 
 const service = new UserService()
 
 export class UserController {
+  async updateMe(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user?.userId) throw new AppError('Nao autorizado', 401)
+      res.json(await service.update(req.user.userId, req.body, req.user))
+    } catch (err) { next(err) }
+  }
+
+  async promoteAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = userIdSchema.safeParse(req.params.id)
+      if (!id.success) throw new AppError('Identificador de usuario invalido', 400)
+      res.json(await service.promoteAdmin(id.data, req.user))
+    } catch (err) { next(err) }
+  }
+
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await service.create(req.body)

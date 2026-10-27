@@ -2,8 +2,31 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserController = void 0;
 const user_service_1 = require("./user.service");
+const user_schema_1 = require("./user.schema");
+const AppError_1 = require("../../utils/AppError");
 const service = new user_service_1.UserService();
 class UserController {
+    async updateMe(req, res, next) {
+        try {
+            if (!req.user?.userId)
+                throw new AppError_1.AppError('Nao autorizado', 401);
+            res.json(await service.update(req.user.userId, req.body, req.user));
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    async promoteAdmin(req, res, next) {
+        try {
+            const id = user_schema_1.userIdSchema.safeParse(req.params.id);
+            if (!id.success)
+                throw new AppError_1.AppError('Identificador de usuario invalido', 400);
+            res.json(await service.promoteAdmin(id.data, req.user));
+        }
+        catch (err) {
+            next(err);
+        }
+    }
     async create(req, res, next) {
         try {
             const result = await service.create(req.body);

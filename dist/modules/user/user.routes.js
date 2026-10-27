@@ -8,9 +8,14 @@ const user_schema_1 = require("./user.schema");
 const role_middleware_1 = require("../../middlewares/role.middleware");
 const router = (0, express_1.Router)();
 const controller = new user_controller_1.UserController();
+router.use(auth_middleware_1.authMiddleware);
+// Updating one's own account does not grant access to user administration.
+router.put('/me', (0, validate_middleware_1.validate)(user_schema_1.updateUserSchema), (req, res, next) => controller.updateMe(req, res, next));
+router.use((0, role_middleware_1.roleMiddleware)(['ADMIN']));
 router.post('/', (0, validate_middleware_1.validate)(user_schema_1.createUserSchema), (req, res, next) => controller.create(req, res, next));
-router.get('/', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO', 'INSTRUTOR']), (req, res, next) => controller.findAll(req, res, next));
-router.get('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO', 'INSTRUTOR']), (req, res, next) => controller.findById(req, res, next));
-router.put('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO', 'INSTRUTOR']), (0, validate_middleware_1.validate)(user_schema_1.updateUserSchema), (req, res, next) => controller.update(req, res, next));
-router.delete('/:id', auth_middleware_1.authMiddleware, (0, role_middleware_1.roleMiddleware)(['MEDICO', 'INSTRUTOR']), (req, res, next) => controller.delete(req, res, next));
+router.get('/', (req, res, next) => controller.findAll(req, res, next));
+router.post('/:id/promote-admin', (0, validate_middleware_1.validate)(user_schema_1.promoteAdminSchema), (req, res, next) => controller.promoteAdmin(req, res, next));
+router.get('/:id', (req, res, next) => controller.findById(req, res, next));
+router.put('/:id', (0, validate_middleware_1.validate)(user_schema_1.updateUserSchema), (req, res, next) => controller.update(req, res, next));
+router.delete('/:id', (req, res, next) => controller.delete(req, res, next));
 exports.default = router;

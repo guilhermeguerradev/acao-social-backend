@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateUserSchema = exports.createUserSchema = void 0;
+exports.updateUserSchema = exports.createUserSchema = exports.userIdSchema = exports.promoteAdminSchema = void 0;
 const zod_1 = require("zod");
+exports.promoteAdminSchema = zod_1.z.object({}).strict();
+exports.userIdSchema = zod_1.z.string().uuid();
 exports.createUserSchema = zod_1.z.object({
     name: zod_1.z.string().trim().min(1).max(120),
     email: zod_1.z.string().trim().toLowerCase().email(),

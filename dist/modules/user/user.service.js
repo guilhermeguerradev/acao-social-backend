@@ -10,6 +10,26 @@ const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const AppError_1 = require("../../utils/AppError");
 const prismaSelect_1 = require("../../utils/prismaSelect");
 class UserService {
+    async promoteAdmin(id, actor) {
+        if (!actor?.userId || actor.role !== 'ADMIN')
+            throw new AppError_1.AppError('Acesso negado', 403);
+        try {
+            return await prisma_1.prisma.$transaction(async (tx) => {
+                const admin = await tx.user.findUnique({ where: { id: actor.userId }, select: { isAdmin: true } });
+                if (!admin?.isAdmin)
+                    throw new AppError_1.AppError('Acesso negado', 403);
+                return tx.user.update({
+                    where: { id }, data: { isAdmin: true },
+                    select: { ...prismaSelect_1.publicUserSelect, medico: { select: { id: true } }, instrutor: { select: { id: true } } },
+                });
+            }, { isolationLevel: client_1.Prisma.TransactionIsolationLevel.Serializable });
+        }
+        catch (error) {
+            if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025')
+                throw new AppError_1.AppError('Usuario nao encontrado', 404);
+            throw error;
+        }
+    }
     async create(data) {
         const exists = await prisma_1.prisma.user.findUnique({
             where: { email: data.email }
@@ -57,6 +77,8 @@ class UserService {
         return user;
     }
     async update(id, data, actor) {
+        if (actor?.role !== 'ADMIN' && actor?.userId !== id)
+            throw new AppError_1.AppError('Acesso negado', 403);
         const target = await this.findById(id);
         if (target.isAdmin && actor?.role !== 'ADMIN')
             throw new AppError_1.AppError('Apenas administradores podem alterar esta conta', 403);
@@ -97,6 +119,8 @@ class UserService {
         }
     }
     async delete(id, actor) {
+        if (actor?.role !== 'ADMIN')
+            throw new AppError_1.AppError('Acesso negado', 403);
         const target = await this.findById(id);
         if (actor?.userId === id)
             throw new AppError_1.AppError('Nao e permitido excluir sua propria conta', 409);

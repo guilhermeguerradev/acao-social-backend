@@ -13,11 +13,17 @@ O backend retorna 503 com codigo `DEMANDS_UNAVAILABLE` para tabela/coluna de Dem
 
 `User.isAdmin` e persistido, inicia em `false` e gera o papel `ADMIN`. A autenticacao consulta o banco em toda requisicao: alterar o papel no armazenamento do navegador ou manter um JWT antigo nao concede acesso administrativo.
 
-Administradores acessam os CRUDs existentes, inclusive aulas e consultas de outros profissionais, e consultam todas as demandas. Podem escolher o profissional responsavel ao criar aulas/consultas. Permanecem as validacoes de capacidade, conflito de horario, duplicidade e integridade referencial. As permissoes existentes de medicos e instrutores foram preservadas.
+Administradores acessam os CRUDs existentes, inclusive aulas e consultas de outros profissionais, e consultam todas as demandas. Podem escolher o profissional responsavel ao criar aulas/consultas. Permanecem as validacoes de capacidade, conflito de horario, duplicidade e integridade referencial. As funcoes operacionais de medicos e instrutores foram preservadas. A gestao interna de usuarios e a criacao/edicao/exclusao de perfis profissionais agora sao exclusivas do administrador. Consultas autenticadas aos diretorios de profissionais permanecem disponiveis para os formularios de aulas e consultas.
 
 Usuarios comuns/profissionais nao podem editar ou excluir uma conta administradora. Ninguem pode excluir a propria conta pela API. Excluir outra conta remove seus perfis profissionais vazios na mesma transacao; consultas, aulas e demandas vinculadas impedem a exclusao com 409, preservando o historico. Nao ha exclusao em cascata de registros de atendimento.
 
 Os formularios publicos nao aceitam `isAdmin`. Nao existe cadastro publico de administrador, senha padrao, seed de administrador ou promocao automatica do primeiro cadastro. Nao foram adicionadas aprovacao/rejeicao, edicao/exclusao de demandas ou mudanca de situacao.
+
+## Promover usuarios pela interface
+
+Um administrador existente abre Usuarios, escolhe a conta e usa Promover a administrador. A confirmacao mostra nome e email. `POST /users/:id/promote-admin` exige ADMIN, valida o UUID e corpo vazio, verifica novamente o administrador na transacao e altera apenas isAdmin. Perfis de medico/instrutor e demais dados sao preservados. Repetir a promocao mantem o mesmo privilegio; nao ha rebaixamento neste fluxo. Sair e entrar atualiza o rotulo na interface; a API consulta a permissao atual a cada requisicao.
+
+`/users` e suas operacoes administrativas exigem ADMIN, incluindo criar usuarios sem perfil. `PUT /users/me` permite ao autenticado alterar apenas seus proprios nome, email e senha; nunca permissoes. Medicos/instrutores nao podem administrar terceiros nem vincular/editar/excluir perfis. O cadastro publico da propria conta profissional continua separado e nao aceita isAdmin. A criacao inicial de administrador via SQL e somente o bootstrap manual ja preparado, nao um fluxo publico. Esta alteracao nao adiciona migrations.
 
 ## Migration nova: nao executada
 

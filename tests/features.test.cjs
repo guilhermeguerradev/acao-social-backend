@@ -166,27 +166,27 @@ test('enrollment pagination and lesson filter share the same total predicate', a
 test('user and beneficiary deletion distinguish dependencies from missing records', async () => {
   prisma.user.delete = async () => { throw knownError('P2003'); };
   prisma.beneficiario.delete = async () => { throw knownError('P2003'); };
-  await assert.rejects(users.delete(uuid), status(409));
+  await assert.rejects(users.delete(uuid, { userId: 'admin', role: 'ADMIN' }), status(409));
   await assert.rejects(beneficiary.delete(uuid), status(409));
   prisma.user.findUnique = async () => null;
-  await assert.rejects(users.delete(uuid), status(404));
+  await assert.rejects(users.delete(uuid, { userId: 'admin', role: 'ADMIN' }), status(404));
 });
 
 // Exercise the real Express routes, validators, auth and controllers over HTTP.
 const express = require('express');
 const app = express();
 app.use(express.json());
-for (const resource of ['beneficiario', 'consulta', 'aula', 'matricula', 'user']) {
+for (const resource of ['beneficiario', 'consulta', 'aula', 'matricula', 'user', 'medico', 'instrutor']) {
   app.use('/' + resource, require('../dist/modules/' + resource + '/' + resource + '.routes').default);
 }
 app.use(errorMiddleware);
 let server;
-async function request(url, body, token) {
+async function request(url, body, token, method = 'PUT') {
   if (!server) {
     server = await new Promise(resolve => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
   }
   return fetch('http://127.0.0.1:' + server.address().port + url, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(body),
+    method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 }
 after(async () => { if (server) await new Promise(resolve => server.close(resolve)); });
@@ -271,5 +271,71 @@ test('Render proxy trusts only the final hop and local mode trusts none', () => 
   } finally {
     if (previous === undefined) delete process.env.RENDER; else process.env.RENDER = previous;
     delete require.cache[path];
+  }
+});
+
+test('user administration requires authentication and denies doctors and instructors for every operation', async () => {
+  const cases = [['/user', undefined, 'GET'], ['/user', {}, 'POST'], ['/user/' + uuid, undefined, 'GET'], ['/user/' + uuid, {}, 'PUT'], ['/user/' + uuid, undefined, 'DELETE'], ['/user/' + uuid + '/promote-admin', {}, 'POST']];
+  for (const [url, body, method] of cases) assert.equal((await request(url, body, undefined, method)).status, 401);
+  for (const profile of ['medico', 'instrutor', null]) {
+    prisma.user.findUnique = async () => ({ id: 'user', isAdmin: false, medico: profile === 'medico' ? { id: 'doctor' } : null, instrutor: profile === 'instrutor' ? { id: 'teacher' } : null });
+    for (const [url, body, method] of cases) assert.equal((await request(url, body, 'valid', method)).status, 403);
+    for (const resource of ['medico', 'instrutor']) {
+      for (const [url, method] of [['/' + resource, 'POST'], ['/' + resource + '/' + uuid, 'PUT'], ['/' + resource + '/' + uuid, 'DELETE']]) {
+        assert.equal((await request(url, {}, 'valid', method)).status, 403);
+      }
+      assert.equal((await request('/' + resource, undefined, 'valid', 'GET')).status, 200);
+    }
+  }
+});
+
+test('authenticated users may edit only their own account and cannot change privileges', async () => {
+  prisma.user.findUnique = async () => ({ id: 'user', isAdmin: false, medico: { id: 'doctor' }, instrutor: null });
+  let updatedId;
+  prisma.user.update = async ({ where, data }) => { updatedId = where.id; return { id: where.id, ...data }; };
+  assert.equal((await request('/user/me', { name: 'Nome atualizado' }, 'valid')).status, 200);
+  assert.equal(updatedId, 'user');
+  assert.equal((await request('/user/me', { isAdmin: true }, 'valid')).status, 400);
+  assert.equal((await request('/user/' + uuid, { name: 'Outra conta' }, 'valid')).status, 403);
+  await assert.rejects(users.update(uuid, { name: 'Outra conta' }, { userId: 'user', role: 'MEDICO' }), status(403));
+});
+
+test('an existing administrator can promote a selected user without overwriting professional profiles', async () => {
+  prisma.user.findUnique = async () => ({ id: 'admin', isAdmin: true });
+  let count = 0;
+  prisma.user.update = async ({ where, data, select }) => {
+    count++;
+    assert.equal(where.id, uuid); assert.deepEqual(data, { isAdmin: true });
+    assert.equal(select.password, undefined);
+    return { id: uuid, isAdmin: true, medico: { id: 'doctor' }, instrutor: { id: 'teacher' } };
+  };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await request('/user/' + uuid + '/promote-admin', {}, 'valid', 'POST');
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { id: uuid, isAdmin: true, medico: { id: 'doctor' }, instrutor: { id: 'teacher' } });
+  }
+  assert.equal(count, 2);
+  assert.equal((await request('/user/invalid/promote-admin', {}, 'valid', 'POST')).status, 400);
+  assert.equal((await request('/user/' + uuid + '/promote-admin', { isAdmin: true }, 'valid', 'POST')).status, 400);
+  prisma.user.update = async () => { throw knownError('P2025'); };
+  assert.equal((await request('/user/' + uuid + '/promote-admin', {}, 'valid', 'POST')).status, 404);
+});
+
+test('promotion rechecks the existing administrator in the transaction and rejects fabricated authority', async () => {
+  prisma.user.findUnique = async () => ({ id: 'user', isAdmin: false });
+  prisma.user.update = async () => assert.fail('must not promote');
+  await assert.rejects(users.promoteAdmin(uuid, { userId: 'user', role: 'ADMIN' }), status(403));
+  await assert.rejects(users.promoteAdmin(uuid, { userId: 'user', role: 'MEDICO' }), status(403));
+  await assert.rejects(users.promoteAdmin(uuid), status(403));
+  assert.equal((await request('/user/' + uuid + '/promote-admin', {}, 'stale-admin', 'POST')).status, 403);
+});
+
+test('administrator retains user administration and both professional profile management permissions', async () => {
+  prisma.user.findUnique = async () => ({ id: 'admin', isAdmin: true });
+  assert.equal((await request('/user', undefined, 'valid', 'GET')).status, 200);
+  for (const resource of ['medico', 'instrutor']) {
+    assert.equal((await request('/' + resource, { userId: uuid }, 'valid', 'POST')).status, 201);
+    assert.equal((await request('/' + resource + '/' + uuid, { userId: uuid }, 'valid', 'PUT')).status, 200);
+    assert.equal((await request('/' + resource + '/' + uuid, undefined, 'valid', 'DELETE')).status, 204);
   }
 });

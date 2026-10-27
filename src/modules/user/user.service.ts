@@ -5,6 +5,23 @@ import { AppError } from '../../utils/AppError'
 import { publicUserSelect } from '../../utils/prismaSelect'
 
 export class UserService {
+  async promoteAdmin(id: string, actor?: { userId?: string; role?: string | null }) {
+    if (!actor?.userId || actor.role !== 'ADMIN') throw new AppError('Acesso negado', 403)
+    try {
+      return await prisma.$transaction(async tx => {
+        const admin = await tx.user.findUnique({ where: { id: actor.userId }, select: { isAdmin: true } })
+        if (!admin?.isAdmin) throw new AppError('Acesso negado', 403)
+        return tx.user.update({
+          where: { id }, data: { isAdmin: true },
+          select: { ...publicUserSelect, medico: { select: { id: true } }, instrutor: { select: { id: true } } },
+        })
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') throw new AppError('Usuario nao encontrado', 404)
+      throw error
+    }
+  }
+
   async create(data: {
     name: string
     email: string
@@ -68,6 +85,7 @@ export class UserService {
     email?: string
     password?: string
   }, actor?: { userId?: string; role?: string | null }) {
+    if (actor?.role !== 'ADMIN' && actor?.userId !== id) throw new AppError('Acesso negado', 403)
     const target = await this.findById(id)
     if (target.isAdmin && actor?.role !== 'ADMIN') throw new AppError('Apenas administradores podem alterar esta conta', 403)
     if (data.email) {
@@ -110,6 +128,7 @@ export class UserService {
   }
 
   async delete(id: string, actor?: { userId?: string; role?: string | null }) {
+    if (actor?.role !== 'ADMIN') throw new AppError('Acesso negado', 403)
     const target = await this.findById(id)
     if (actor?.userId === id) throw new AppError('Nao e permitido excluir sua propria conta', 409)
     if (target.isAdmin && actor?.role !== 'ADMIN') throw new AppError('Apenas administradores podem remover esta conta', 403)
