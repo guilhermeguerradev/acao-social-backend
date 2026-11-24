@@ -1,0 +1,3 @@
+ALTER TABLE "Beneficiario"
+ADD COLUMN "isAluno" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "curso" TEXT;

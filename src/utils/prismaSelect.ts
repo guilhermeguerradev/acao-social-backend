@@ -33,5 +33,7 @@ export const beneficiarioSelect = {
   id: true,
   name: true,
   telefone: true,
+  isAluno: true,
+  curso: true,
   createdAt: true,
 } as const

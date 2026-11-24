@@ -5,7 +5,7 @@ import { AppError } from '../../utils/AppError'
 import { beneficiarioSelect } from '../../utils/prismaSelect'
 
 export class BeneficiarioService {
-  async create(data: { name: string; telefone?: string }) {
+  async create(data: { name: string; telefone?: string; isAluno: boolean; curso?: 'BOMBEIRO_MIRIM' | null }) {
     return prisma.beneficiario.create({
       data,
       select: beneficiarioSelect,
@@ -37,11 +37,11 @@ export class BeneficiarioService {
     return beneficiario
   }
 
-  async update(id: string, data: { name?: string; telefone?: string }) {
+  async update(id: string, data: { name?: string; telefone?: string; isAluno?: boolean; curso?: 'BOMBEIRO_MIRIM' | null }) {
     await this.findById(id)
     return prisma.beneficiario.update({
       where: { id },
-      data: { name: data.name, telefone: data.telefone },
+      data: { name: data.name, telefone: data.telefone, isAluno: data.isAluno, curso: data.isAluno ? data.curso : null },
       select: beneficiarioSelect,
     })
   }
